@@ -20,7 +20,6 @@ public class Network implements Serializable {
     private boolean outputEnabled = false;
     private long timer = 0L;
     private int frequencyOfTrainingOutput = 0;
-    private int frequencyOfEffectivenessOutput = 0;
 
 
     /**
@@ -88,40 +87,22 @@ public class Network implements Serializable {
      * @throws NullPointerException if out is null.
      */
     public void enableOutput(PrintStream out) throws NullPointerException {
-        enableOutput(out, 0, 0);
+        enableOutput(out, 0);
     }
+
     /**
      * Enables the output for this NN, all output will be redirected to out.
      * @param out the output stream to redirect all output to.
-     * @param frequencyOfTrainingOutput the amount of generations that pass before outputting anything to the output stream.
+     * @param frequencyOfTrainingOutput the amount of generations that pass before calculating the score of the network and writing to the output stream (smaller is more efficient).
      * @throws NullPointerException if out is null.
      */
-    public void enableOutput(PrintStream out, int frequencyOfTrainingOutput) throws NullPointerException {
-        enableOutput(out, frequencyOfTrainingOutput, 0);
-    }
-    /**
-     * Enables the output for this NN, all output will be redirected to out.
-     * @param out the output stream to redirect all output to.
-     * @param frequencyOfEffectivenessOutput the amount of generations that pass before calculating the score of the network and writing to the output stream.
-     * @throws NullPointerException if out is null.
-     */
-    public void enableOutput(PrintStream out, Integer frequencyOfEffectivenessOutput) throws NullPointerException {
-        enableOutput(out, 0, frequencyOfEffectivenessOutput);
-    }
-    /**
-     * Enables the output for this NN, all output will be redirected to out.
-     * @param out the output stream to redirect all output to.
-     * @param frequencyOfTrainingOutput the amount of generations that pass before calculating the score of the network and writing to the output stream.
-     * @param frequencyOfEffectivenessOutput the amount of generations that pass before outputting anything to the output stream.
-     * @throws NullPointerException if out is null.
-     */
-    public void enableOutput(PrintStream out, int frequencyOfTrainingOutput, int frequencyOfEffectivenessOutput) throws NullPointerException{
+    public void enableOutput(PrintStream out, int frequencyOfTrainingOutput) throws NullPointerException{
         if(out == null)throw new NullPointerException("PrintStream assigned can't be null!");
-        if(frequencyOfEffectivenessOutput < 0)throw new IllegalArgumentException("The frequency of effectiveness output can't be less than 0!");
         if(frequencyOfTrainingOutput < 0)throw new IllegalArgumentException("The frequency of training output can't be less than 0!");
 
         outputEnabled = true;
         printStream = out;
+        this.frequencyOfTrainingOutput = frequencyOfTrainingOutput;
         printStream.println("Output Enabled");
     }
     /**
@@ -176,12 +157,12 @@ public class Network implements Serializable {
         if(generations<=0) throw new IllegalArgumentException("Generations number must be > 0!");
 
         for (int i = 0; i < generations; i++) {
-            if(frequencyOfTrainingOutput > 0 && generations%frequencyOfTrainingOutput == 0){
+            if(frequencyOfTrainingOutput > 0 && i%frequencyOfTrainingOutput == 0){
                 printStream.println("Starting generation number " + i + ".");
+                printStream.println("The average deviation is " + getAverageDeviation() + "(smaller is better) ");
+
             }
-            if(frequencyOfEffectivenessOutput > 0 && generations%frequencyOfEffectivenessOutput == 0){
-                printStream.println("The verage deviation is " + getAverageDeviation() + "(smaller is better) ");
-            }
+
             for (int j = 0; j < input.length; j++) {
                 train(input[j], target[j], learningRate);
             }
@@ -379,11 +360,8 @@ public class Network implements Serializable {
      * @throws FileNotFoundException if the specified filepath doesn't exist.
      * @throws NotAFileException if the specified filepath doesn't point to a file.
      */
-    public Network load(String filepath) throws IOException {
-        if(outputEnabled){
-            printStream.println("Starting the loading process.");
-            timer = System.currentTimeMillis();
-        }
+    public static Network load(String filepath) throws IOException {
+
         File f = new File(filepath);
         if(!f.isFile())throw new NotAFileException("The specified filepath doesn't point to a file!");
         if(!f.exists())throw new FileNotFoundException("The specified filepath doesn't exist!");
@@ -394,7 +372,6 @@ public class Network implements Serializable {
             Network net = (Network) in.readObject();
             in.close();
             fileIn.close();
-            if(outputEnabled) printStream.println("Loading finished after " + (System.currentTimeMillis() - timer) + "ms(" + (System.currentTimeMillis() - timer)/1000 + "s).");
             return net;
         } catch (ClassNotFoundException c) {
             c.printStackTrace();
@@ -502,24 +479,5 @@ public class Network implements Serializable {
     public void setFrequencyOfTrainingOutput(int frequencyOfTrainingOutput) {
         if(!outputEnabled) throw new IllegalStateException("Use enableOutput to set the output stream first!");
         this.frequencyOfTrainingOutput = frequencyOfTrainingOutput;
-    }
-    /**
-     * Returns the amount of generations that pass before calculating the score of the network and writing to the output stream.
-     * @return the amount of generations that pass before calculating the score of the network and writing to the output stream.
-     * @see #getAverageDeviation()
-     */
-    public int getFrequencyOfEffectivenessOutput() {
-        return frequencyOfEffectivenessOutput;
-    }
-    /**
-     * Sets the amount of generations that pass before calculating the score of the network and writing to the output stream.
-     * Note: the bigger the number gets it will affect training time more and more.
-     * @param frequencyOfEffectivenessOutput the new frequency in which the training algorithm should print the average deviation (using the test data).
-     * @see #getAverageDeviation()
-     */
-    public void setFrequencyOfEffectivenessOutput(int frequencyOfEffectivenessOutput) {
-        if(!outputEnabled) throw new IllegalStateException("Use enableOutput to set the output stream first!");
-        if(frequencyOfEffectivenessOutput < 1) throw new IllegalArgumentException("The frequency of the effectiveness output can't be less than 1!");
-        this.frequencyOfEffectivenessOutput = frequencyOfEffectivenessOutput;
     }
 }
